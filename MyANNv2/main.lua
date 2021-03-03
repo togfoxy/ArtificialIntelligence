@@ -7,23 +7,31 @@ nnetwork.inputlayer = {}	-- a list of input perceptrons
 nnetwork.hiddenlayer = {}	-- a list of perceptrons
 nnetwork.outputlayer = {}	-- a list of one perceptron
 
--- this needs to be a class that can be re-used
+-- this is a class that can be re-used
 inputperceptron = {inputvalue = 0,		
 					weight = {} 	-- there will eventually be one weight per hidden p
 					}
+inputperceptron.__index = inputperceptron
 					
 function inputperceptron:new(o)
 	o = o or {}
 	setmetatable(o,self)
-	self.__index = self
-	self.inputvalue = love.math.random(0,9)		-- a silly random number for testing
-	-- self.weight = ??	-- there will be 1 weight per hidden perceptron
+
+	o.inputvalue = 0
+	
+	-- there will be 1 weight per hidden perceptron	--! need to make this scalable.
+	o.weight = {}
+    o.weight[1] = love.math.random(0,100)/100
+    o.weight[2] = love.math.random(0,100)/100
+    o.weight[3] = love.math.random(0,100)/100
 	return o
 end
 
-perceptron = {biasweight = 0,
+
+perceptron = {biasweight = 0,	-- this will be initialised to a random value
 				outsignal = 0
 			}
+perceptron.__index = perceptron
 			
 function perceptron:new(o)
 	o = o or {}
@@ -45,59 +53,75 @@ function EstablishNetwork(numofinputs, numofhiddennodes)
 	local p
 	for i = 1,numofinputs do
 		p = inputperceptron:new()
+		
+		--print("My weights for p" .. i .. " after calling new()")
+		--print(p.weight[1],p.weight[2],p.weight[3])
+		
 		table.insert(nnetwork.inputlayer,p)
+		
+		--print("My weights for p" .. i .. " in the network after calling new()")
+		--print(nnetwork.inputlayer[i].weight[1],nnetwork.inputlayer[i].weight[2],nnetwork.inputlayer[i].weight[3])
+		
 	end
 	
 	for i = 1,numofhiddennodes do
-		p = perceptron
+		p = perceptron:new()
 		table.insert(nnetwork.hiddenlayer,p)
 	end	
+
+	print("Inputs")
+	print(nnetwork.inputlayer[1].inputvalue)
+	print(nnetwork.inputlayer[2].inputvalue)
+	print(nnetwork.inputlayer[1].inputvalue)
+	print()
+	
+	print("Weights")
+	print(nnetwork.inputlayer[1].weight[1],nnetwork.inputlayer[1].weight[2])
+	print(nnetwork.inputlayer[2].weight[1],nnetwork.inputlayer[2].weight[2])	
 end
 
 function ExecuteForwardPass()
 	
 	print("Executing forward pass")
+	
 	myinputvalue = {}
 	myweightvalue = {}
 	mysignalvalue = 0
 
-	-- take all the equivalent input  from the input layer	
-	-- for each perceptron in hidden layer
+	-- take all the equivalent input from the input layer
+	
 	for i = 1,#nnetwork.hiddenlayer do	-- for each perceptron
 		for j = 1,#nnetwork.inputlayer do	-- for each input
 		
-			-- for each input node, do the following for this perceptron
-			myinputvalue[j] = nnetwork.inputlayer[j].inputvalue		-- capture input node X input value
+			-- determine the input value from input joint.dampingRatio
+			-- this is easy because there is only one input value
+			-- the perceptron will receive multiple input values so store that in a list
+			myinputvalue[i] = nnetwork.inputlayer[j].inputvalue		-- capture input value for input node j
 			
-			-- print("For perceptron[".. i .. "], the input from inputron[" .. j .. "] is " .. myinputvalue[j])
-			
-			-- weights will be nil when initialised because we don't know how many hidden layers exist
-			-- this is where we know how many layers we have so initialise them here if necessary
-			if nnetwork.inputlayer[j].weight[i] == nil then		-- this is Weight i/j or input i pointing to p j
-				math.randomseed(os.time())
-				nnetwork.inputlayer[j].weight[i] = love.math.random(0,100)/100
-				print(nnetwork.inputlayer[j].weight[i])
-			end
-			
-			myweightvalue[j] = nnetwork.inputlayer[j].weight[i]		-- for input node X, capture weight 1 for p 1 and weight 2 for p 2 etc
-			print("For perceptron[" .. i .. "] the myweightvalue[" .. j .. "] = " .. myweightvalue[j])
-			
-			-- now, for input X, we have a input/weight pair
-			--for k = 1, #myinputvalue do
-			--	print("Input " .. myinputvalue[k] .. " has weight " .. myweightvalue[k])
-			--end
+							--print("For perceptron[".. i .. "], the input from inputron[" .. j .. "] is " .. myinputvalue[j])
+						
+
+							--print("Weight for input[" .. j .. "][" .. i .. "] is " .. nnetwork.inputlayer[j].weight[i])
 			
 			
+			-- determine the weight that joins input[j] to this perceptron[i]
+			-- the perceptron will receive multiple weights (one per input) so store that in a list 
 			
-			
-			
-			
-			
-			
-			
+			myweightvalue[i] = nnetwork.inputlayer[j].weight[i]		-- for input node j, capture weight 1 for p 1 and weight 2 for p 2 etc
+																	--  for THIS perceptron (i) myweightvalue
+				
+			-- print("For perceptron[" .. i .. "] the input for inputnode[" .. j .. "] is value " .. myinputvalue[i])
+			-- print("The weight coming into this perceptron is " .. myweightvalue[i])
+			-- print()
 		end
 
 	end	
+	
+	-- output the pairs for checking
+	for k = 1, #myinputvalue do
+		print(myinputvalue[k],myweightvalue[k])
+
+	end
 	
 	
 	
