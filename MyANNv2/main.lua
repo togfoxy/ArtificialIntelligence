@@ -32,7 +32,6 @@ end
 
 
 perceptron = {weight = 0,		-- the next forward layer will apply this weight to the outsignal. Assumes one output
-				biasweight = 0,	-- this will be initialised to a random value
 				outsignal = 0
 			}
 perceptron.__index = perceptron
@@ -42,14 +41,13 @@ function perceptron:new(o)
 	setmetatable(o,self)
 	self.__index = self
 	self.outsignal = 0
-	self.weight = 0
-	self.biasweight = love.math.random(0,100)/100	-- random number between 0 and 1. This is assigned to every perceptron but only the LAST perceptron is considered teh bias.
+	self.weight = love.math.random(0,100)/100 -- random number between 0 and 1. This is assigned to every perceptron but only the LAST perceptron is considered the bias.
 	return o
 end
 			
 --outputperceptron = perceptron
 
-bolKeyPress = false				
+bolKeyPress = true				
 
 
 function EstablishNetwork(numofinputs, numofhiddennodes)
@@ -107,12 +105,13 @@ function ExecuteForwardPass()
 	myinputvalue = {}
 	myweightvalue = {}
 	mysignalvalue = 0
+	mytempresult = 0
 	
 
 	-- take all the equivalent input from the input layer and process every node in the hidden layer
 	
 	for i = 1,intNumberofHiddenNodes do	-- for each perceptron, ignoring any bias node
-		local mytempresult = 0
+		
 		
 		for j = 1,intNumberofInputs do	-- for each input, ignoring bias node
 		
@@ -135,20 +134,21 @@ function ExecuteForwardPass()
 						print()
 		end
 		
-		-- do the multiplication and summing bit		
+		-- do the multiplication and summing bit
+		local mytempresult = 0		
 		for k = 1, #myinputvalue do
-			print("input value * weight = " .. myinputvalue[k] .. " * " .. myweightvalue[k])
 			mytempresult = mytempresult + (myinputvalue[k] * myweightvalue[k])
-			print("mytempresult = " .. mytempresult)
+			print("input value * weight = " .. myinputvalue[k] .. " * " .. myweightvalue[k] .. " = " .. myinputvalue[k] * myweightvalue[k])
+			print("sum of mytempresult = " .. mytempresult)
 		end
 		
-		-- apply the bias just once for this perceptron, remembering it's the same bias value for all nodes in this layer
+		-- apply the hidden layer bias just once for this perceptron, remembering it's the same bias value for all nodes in this layer
 		-- the bias node is the node hanging off the end of the layer: intNumberofHiddenNodes+1
-		mytempresult = mytempresult + (nnetwork.hiddenlayer[intNumberofHiddenNodes+1].biasweight * fltBias)
+		mytempresult = mytempresult + (nnetwork.hiddenlayer[intNumberofHiddenNodes + 1].weight * fltBias)
 		
 		-- do the activation function
-		mytempresult = ApplyActivation(mytempresult)
-		print(mytempresult)
+		-- mytempresult = ApplyActivation(mytempresult)
+		
 		
 		-- set the signal for this perceptron
 		print("The signal for perceptron[" .. i .. "] before assignment is " .. nnetwork.hiddenlayer[i].outsignal)
@@ -161,18 +161,56 @@ function ExecuteForwardPass()
 	myinputvalue = nil
 	myweightvalue = nil
 	mytempresult = 0
+	
 	for m = 1, intNumberofHiddenNodes do
 		-- a simple output * weight
 		mytempresult = mytempresult + (nnetwork.hiddenlayer[m].outsignal * nnetwork.hiddenlayer[m].weight)
+		print(mytempresult)
 	end
 	-- add the bias for the output
-	mytempresult = mytempresult + nnetwork.outputlayer[1].biasweight
+	mytempresult = mytempresult + (nnetwork.outputlayer[1].weight * fltBias)
 	
 	-- set the network signal
+	print(mytempresult)
 	nnetwork.outputlayer[1].outsignal = mytempresult
 	
 	-- done forward pass
-	print("Signal strength is " .. nnetwork.outputlayer[1].outsignal)
+	print("Network signal strength is " .. nnetwork.outputlayer[1].outsignal)
+	
+	
+end
+
+function GetErrorRate(requiredtarget)
+	return requiredtarget - nnetwork.outputlayer[1].outsignal
+end
+
+
+function ExecuteBackaPropagation(mytarget, networksignal)
+
+	print("===================")
+	print("Beginning back prop")
+	print("===================")
+	print("mytarget = " .. mytarget)
+	print("network signal = " .. networksignal)
+	
+	for i = 1, (intNumberofHiddenNodes) do	-- the bias is down later on
+	
+		print("Hidden signal = " .. nnetwork.hiddenlayer[i].outsignal)
+		
+		myvalue = -(mytarget - networksignal) * networksignal * (1 - networksignal) * nnetwork.hiddenlayer[i].outsignal
+		print("Backpropping for P[" .. i .. "] with value " .. myvalue)
+		nnetwork.hiddenlayer[i].weight = nnetwork.hiddenlayer[i].weight - myvalue
+		print("New weight for this P is now " .. nnetwork.hiddenlayer[i].weight)
+	end
+	
+	-- the bias in the hidden layer needs to be updated
+	print("Hidden bias weight = " .. nnetwork.hiddenlayer[intNumberofHiddenNodes+1].weight)
+	
+	myvalue = -(mytarget - networksignal) * networksignal * (1 - networksignal) * nnetwork.hiddenlayer[intNumberofHiddenNodes+1].weight
+	print("Backpropping for P[" .. intNumberofHiddenNodes+1 .. "] with value " .. myvalue)
+	nnetwork.hiddenlayer[intNumberofHiddenNodes+1].weight = nnetwork.hiddenlayer[intNumberofHiddenNodes+1].weight - myvalue
+	print("New weight for this P is now " .. nnetwork.hiddenlayer[intNumberofHiddenNodes+1].weight)
+	
 	
 	
 end
@@ -180,51 +218,48 @@ end
 function love.keypressed(key, scancode, isrepeat)
 	bolKeyPress = true
 end
-
 function love.load()
 
-	void = love.window.setMode(60, 50)
+	void = love.window.setMode(120, 100)
 	love.window.setTitle("Love Classes")
 	
 	EstablishNetwork(2,2)
 end
 
+
 function love.update(dt)
 
-	local correctoutcome	-- for training
+	if bolKeyPress then
+		bolKeyPress = false
 	
-	-- load inputs into input layer
-	for i = 1,intNumberofInputs do
-		print("Enter input #" .. i)
+		local correctoutcome	-- for training
 		
-		-- these next two lines are syntacially the same. Left here for learning.
-		--nnetwork.inputlayer[i].setinputvalue(nnetwork.inputlayer[i],tonumber(io.stdin:read()))
-		nnetwork.inputlayer[i].inputvalue = (tonumber(io.stdin:read()))
-		--print(nnetwork.inputlayer[i].inputvalue)
+		-- load inputs into input layer
+		for i = 1,intNumberofInputs do
+			print("Enter input #" .. i)
+			
+			-- these next two lines are syntacially the same. Left here for learning.
+			--nnetwork.inputlayer[i].setinputvalue(nnetwork.inputlayer[i],tonumber(io.stdin:read()))
+			nnetwork.inputlayer[i].inputvalue = (tonumber(io.stdin:read()))
+			--print(nnetwork.inputlayer[i].inputvalue)
+		end
+		
+		--	get outs for training purposes
+		print("Enter the correct outcome: ")
+		correctoutcome = tonumber(io.stdin:read())
+		
+		-- execute 1 forward pass
+		ExecuteForwardPass()
+		
+		local errorrate = GetErrorRate(correctoutcome)
+		print("Error rate is " .. errorrate)
+
+		-- execute back prop	
+		ExecuteBackaPropagation(correctoutcome, nnetwork.outputlayer[1].outsignal)
+		
+		-- wait for signal to proceeed to next iteration
+
 	end
-	
-	--	get outs for training purposes
-	print("Enter the correct outcome: ")
-	correctoutcome = tonumber(io.stdin:read())
-	
-	-- execute 1 forward pass
-	ExecuteForwardPass()
-	
-	
-	
-	
-
-		-- output signal strength and error rate
-		-- execute back prop
-	
-	-- wait for signal to proceeed to next iteration
-	repeat
-	until bolKeyPress
-		
-		
-		
-
-
 end
 
 function love.draw()
