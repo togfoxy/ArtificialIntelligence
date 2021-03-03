@@ -109,7 +109,7 @@ function ExecuteForwardPass()
 	mysignalvalue = 0
 	
 
-	-- take all the equivalent input from the input layer
+	-- take all the equivalent input from the input layer and process every node in the hidden layer
 	
 	for i = 1,intNumberofHiddenNodes do	-- for each perceptron, ignoring any bias node
 		local mytempresult = 0
@@ -157,7 +157,23 @@ function ExecuteForwardPass()
 
 	end	
 
-
+	-- take all the signal outputs and weights from every node in the hidden layer and feed that to the output node
+	myinputvalue = nil
+	myweightvalue = nil
+	mytempresult = 0
+	for m = 1, intNumberofHiddenNodes do
+		-- a simple output * weight
+		mytempresult = mytempresult + (nnetwork.hiddenlayer[m].outsignal * nnetwork.hiddenlayer[m].weight)
+	end
+	-- add the bias for the output
+	mytempresult = mytempresult + nnetwork.outputlayer[1].biasweight
+	
+	-- set the network signal
+	nnetwork.outputlayer[1].outsignal = mytempresult
+	
+	-- done forward pass
+	print("Signal strength is " .. nnetwork.outputlayer[1].outsignal)
+	
 	
 end
 
