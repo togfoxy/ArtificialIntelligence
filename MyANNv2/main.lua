@@ -174,10 +174,10 @@ function ExecuteForwardPass()
 	-- take all the equivalent input from the input layer and process every node in the hidden layer
 	
 	for i = 1,intNumberofHiddenNodes do	-- for each perceptron, ignoring any bias node
+		-- do the weight * input thing
 		mytempresult = 0
 		for j = 1,intNumberofInputs do	-- for each input, ignoring bias node
-			mytempresult = mytempresult + nnetwork.inputlayer[j].weight[i] * nnetwork.inputlayer[j].inputvalue
-			--print(myweightvalue[i] .. " * " .. myinputvalue[i])
+			mytempresult = mytempresult + (nnetwork.inputlayer[j].weight[i] * nnetwork.inputlayer[j].inputvalue)
 		end
 		
 		-- apply the hidden layer bias just once for this perceptron, remembering it's the same bias value for all nodes in this layer
@@ -188,8 +188,31 @@ function ExecuteForwardPass()
 
 		-- do the activation function and set output signal
 		nnetwork.hiddenlayer[i].outsignal = ApplyActivation(nnetwork.hiddenlayer[i].inputvalue)
-
 	end	
+	
+	-- now calculate forward and update output nodes
+	for i = 1, intNumberofOutputNodes do	-- for each output node ...
+		-- do the weight * input thing
+		print("===o" .. i .. "=========")
+		mytempresult = 0
+		for j = 1,intNumberofHiddenNodes do	-- for each hidden node, ignoring bias node
+		print(nnetwork.hiddenlayer[j].weight[i] .. " * " .. nnetwork.hiddenlayer[j].outsignal)
+			mytempresult = mytempresult + (nnetwork.hiddenlayer[j].weight[i] * nnetwork.hiddenlayer[j].outsignal)
+		end	
+		
+		-- apply the bias
+		mytempresult = mytempresult + (nnetwork.hiddenlayer[intNumberofHiddenNodes + 1].weight[1] * fltBias)
+	
+		nnetwork.outputlayer[i].inputvalue = mytempresult
+	
+		-- do the activation function and set output signal
+		nnetwork.outputlayer[i].outsignal = ApplyActivation(nnetwork.outputlayer[i].inputvalue)	
+	
+	
+	end
+	
+	
+	
 end
 
 function GetErrorRate(requiredtarget)
@@ -297,6 +320,7 @@ function love.draw()
 		love.graphics.setColor(52/255, 235/255, 229/255)
 		love.graphics.circle("fill", nnetwork.hiddenlayer[i].xpos, nnetwork.hiddenlayer[i].ypos, 25)
 	
+		-- draw the input value
 		if i <= intNumberofHiddenNodes then	-- don't print a value for the bias as it is irrelevant
 			love.graphics.setColor(255,0, 0)
 			love.graphics.print(nnetwork.hiddenlayer[i].inputvalue,nnetwork.hiddenlayer[i].xpos - 20,nnetwork.hiddenlayer[i].ypos - 10)
@@ -315,6 +339,17 @@ function love.draw()
 		love.graphics.setColor(235/255, 164/255, 52/255)
 		love.graphics.circle("fill", nnetwork.outputlayer[i].xpos, nnetwork.outputlayer[i].ypos, 25)
 
+		-- draw the input value
+		if i <= intNumberofOutputNodes then	-- don't print a value for the bias as it is irrelevant
+			love.graphics.setColor(255,0, 0)
+			love.graphics.print(nnetwork.outputlayer[i].inputvalue,nnetwork.outputlayer[i].xpos - 20,nnetwork.outputlayer[i].ypos - 10)
+		end
+		
+		-- draw the out signal strength
+		if i <= intNumberofOutputNodes then	-- don't print a value for the bias as it is irrelevant
+			love.graphics.setColor(255, 0, 0)
+			love.graphics.print(nnetwork.outputlayer[i].outsignal,nnetwork.outputlayer[i].xpos + -15,nnetwork.outputlayer[i].ypos + 0)
+		end
 	end
 	
 	-- draw lines with weights for inputs to hidden nodes
