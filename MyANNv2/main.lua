@@ -155,12 +155,10 @@ function EstablishNetwork(numofinputs, numofhiddennodes)
 end
 
 function ApplyActivation(unadjustedinput)
-	--print("Applying activation on " .. unadjustedinput)
-	if unadjustedinput > 0 then 
-		return 1
-	else 
-		return 0
-	end
+
+	local eulersnumber = 2.7182
+	return 1/(1+eulersnumber^-unadjustedinput)
+
 end
 
 function ExecuteForwardPass()
@@ -188,14 +186,8 @@ function ExecuteForwardPass()
 	
 		nnetwork.hiddenlayer[i].inputvalue = mytempresult
 
-		-- do the activation function
-		-- mytempresult = ApplyActivation(mytempresult)
-		
-		
-		-- set the signal for this perceptron
-		--print("The signal for perceptron[" .. i .. "] before assignment is " .. nnetwork.hiddenlayer[i].outsignal)
-		--nnetwork.hiddenlayer[i].outsignal = mytempresult
-		--print("and is now " .. nnetwork.hiddenlayer[i].outsignal)
+		-- do the activation function and set output signal
+		nnetwork.hiddenlayer[i].outsignal = ApplyActivation(nnetwork.hiddenlayer[i].inputvalue)
 
 	end	
 end
@@ -313,7 +305,7 @@ function love.draw()
 		-- draw the out signal strength
 		if i <= intNumberofHiddenNodes then	-- don't print a value for the bias as it is irrelevant
 			love.graphics.setColor(255, 0, 0)
-			love.graphics.print(nnetwork.hiddenlayer[i].outsignal,nnetwork.hiddenlayer[i].xpos + 5,nnetwork.hiddenlayer[i].ypos + 0)
+			love.graphics.print(nnetwork.hiddenlayer[i].outsignal,nnetwork.hiddenlayer[i].xpos + -15,nnetwork.hiddenlayer[i].ypos + 0)
 		end
 		
 	end
