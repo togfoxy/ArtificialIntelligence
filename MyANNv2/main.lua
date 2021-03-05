@@ -193,10 +193,10 @@ function ExecuteForwardPass()
 	-- now calculate forward and update output nodes
 	for i = 1, intNumberofOutputNodes do	-- for each output node ...
 		-- do the weight * input thing
-		print("===o" .. i .. "=========")
+		--print("===o" .. i .. "=========")
 		mytempresult = 0
 		for j = 1,intNumberofHiddenNodes do	-- for each hidden node, ignoring bias node
-		print(nnetwork.hiddenlayer[j].weight[i] .. " * " .. nnetwork.hiddenlayer[j].outsignal)
+		--print(nnetwork.hiddenlayer[j].weight[i] .. " * " .. nnetwork.hiddenlayer[j].outsignal)
 			mytempresult = mytempresult + (nnetwork.hiddenlayer[j].weight[i] * nnetwork.hiddenlayer[j].outsignal)
 		end	
 		
@@ -210,13 +210,19 @@ function ExecuteForwardPass()
 	
 	
 	end
-	
-	
-	
 end
 
 function GetErrorRate(requiredtarget)
-	return requiredtarget - nnetwork.outputlayer[1].outsignal
+	-- requiredtarget = an array of correct values per output
+	
+	local totalerror = 0
+	
+	for i = 1, #requiredtarget do
+		local thisoutputerror = 0
+		thisoutputerror = 0.5 * (requiredtarget[i] - nnetwork.outputlayer[i].outsignal)^2
+		totalerror = totalerror + thisoutputerror
+	end
+	return totalerror
 end
 
 function ExecuteBackaPropagation(mytarget, networksignal)
@@ -289,7 +295,7 @@ function love.update(dt)
 		-- execute 1 forward pass
 		ExecuteForwardPass()
 		
-		--local errorrate = GetErrorRate(correctoutcome)
+		local errorrate = GetErrorRate(correctoutcome)		-- send in an array and get a single number back
 		-- print("Error rate is " .. errorrate)
 
 		-- execute back prop	
