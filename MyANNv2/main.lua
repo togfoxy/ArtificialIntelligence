@@ -11,7 +11,7 @@ nnetwork.inputlayer = {}	-- a list of input perceptrons
 nnetwork.hiddenlayer = {}	-- a list of perceptrons
 nnetwork.outputlayer = {}	-- a list of one perceptron
 
-bolKeyPress = true	
+bolKeyPress = false	
 
 -- this is a class that can be re-used
 inputperceptron = {inputvalue = 0,
@@ -39,7 +39,8 @@ function inputperceptron:new(o)
 end
 
 
-perceptron = {outsignal = 0,		-- the next forward layer will apply this weight to the outsignal. Assumes one output
+perceptron = {inputvalue = 0,	-- sum of (inputs * weight)	
+				outsignal = 0,	-- the next forward layer will apply this weight to the outsignal. Assumes one output
 				xpos,			-- for graphics
 				ypos,			-- for graphics
 				weight = {}		-- if this is a bias then the weight is used and not outsignal
@@ -51,6 +52,7 @@ function perceptron:new(o)
 	setmetatable(o,self)
 	self.__index = self
 	
+	o.inputvalue = 0
 	o.outsignal = 0
 	o.xpos = 0
 	o.ypos = 0	
@@ -63,9 +65,6 @@ function perceptron:new(o)
 	return o
 end
 			
-			
-
-
 function EstablishNetwork(numofinputs, numofhiddennodes)
 
 	
@@ -142,9 +141,9 @@ function EstablishNetwork(numofinputs, numofhiddennodes)
 	--print(nnetwork.inputlayer[1].inputvalue)
 	--print()
 	
-	print("Weights")
-	print(nnetwork.inputlayer[1].weight[1],nnetwork.inputlayer[1].weight[2])
-	print(nnetwork.inputlayer[2].weight[1],nnetwork.inputlayer[2].weight[2])
+	--print("Weights")
+	--print(nnetwork.inputlayer[1].weight[1],nnetwork.inputlayer[1].weight[2])
+	--print(nnetwork.inputlayer[2].weight[1],nnetwork.inputlayer[2].weight[2])
 
 	for i = 1, (intNumberofOutputNodes) do	
 		p = perceptron:new()		-- note that this will create weights but we'll just ignore that.
@@ -177,76 +176,28 @@ function ExecuteForwardPass()
 	-- take all the equivalent input from the input layer and process every node in the hidden layer
 	
 	for i = 1,intNumberofHiddenNodes do	-- for each perceptron, ignoring any bias node
-		
-		
+		mytempresult = 0
 		for j = 1,intNumberofInputs do	-- for each input, ignoring bias node
-		
-			-- determine the input value from input joint.dampingRatio
-			-- this is easy because there is only one input value
-			-- the perceptron will receive multiple input values so store that in a list
-			myinputvalue[i] = nnetwork.inputlayer[j].inputvalue		-- capture input value for input node j
-			
-						--print("For perceptron[".. i .. "], the input from inputron[" .. j .. "] is " .. myinputvalue[j])
-						--print("Weight for input[" .. j .. "][" .. i .. "] is " .. nnetwork.inputlayer[j].weight[i])
-			
-			-- determine the weight that joins input[j] to this perceptron[i]
-			-- the perceptron will receive multiple weights (one per input) so store that in a list 
-			
-			myweightvalue[i] = nnetwork.inputlayer[j].weight[i]		-- for input node j, capture weight 1 for p 1 and weight 2 for p 2 etc
-																	--  for THIS perceptron (i) myweightvalue
-				
-						--print("For perceptron[" .. i .. "] the input for inputnode[" .. j .. "] is value " .. myinputvalue[i])
-						--print("The weight coming into this perceptron is " .. myweightvalue[i])
-						--print()
-		end
-		
-		-- do the multiplication and summing bit
-		local mytempresult = 0		
-		for k = 1, #myinputvalue do
-			mytempresult = mytempresult + (myinputvalue[k] * myweightvalue[k])
-			--print("input value * weight = " .. myinputvalue[k] .. " * " .. myweightvalue[k] .. " = " .. myinputvalue[k] * myweightvalue[k])
-			--print("sum of mytempresult = " .. mytempresult)
+			mytempresult = mytempresult + nnetwork.inputlayer[j].weight[i] * nnetwork.inputlayer[j].inputvalue
+			--print(myweightvalue[i] .. " * " .. myinputvalue[i])
 		end
 		
 		-- apply the hidden layer bias just once for this perceptron, remembering it's the same bias value for all nodes in this layer
 		-- the bias node is the node hanging off the end of the layer: intNumberofHiddenNodes+1
-		mytempresult = mytempresult + (nnetwork.inputlayer[intNumberofInputs + 1].weight[i] * fltBias)
-		
+		mytempresult = mytempresult + (nnetwork.inputlayer[intNumberofInputs + 1].weight[1] * fltBias)
+	
+		nnetwork.hiddenlayer[i].inputvalue = mytempresult
+
 		-- do the activation function
 		-- mytempresult = ApplyActivation(mytempresult)
 		
 		
 		-- set the signal for this perceptron
 		--print("The signal for perceptron[" .. i .. "] before assignment is " .. nnetwork.hiddenlayer[i].outsignal)
-		nnetwork.hiddenlayer[i].outsignal = mytempresult
+		--nnetwork.hiddenlayer[i].outsignal = mytempresult
 		--print("and is now " .. nnetwork.hiddenlayer[i].outsignal)
 
 	end	
-
-
-	--[[	--!
-	-- take all the signal outputs and weights from every node in the hidden layer and feed that to the output node
-	myinputvalue = nil
-	myweightvalue = nil
-	mytempresult = 0
-	
-	for m = 1, intNumberofHiddenNodes do
-		-- a simple output * weight
-		mytempresult = mytempresult + (nnetwork.hiddenlayer[m].outsignal * nnetwork.hiddenlayer[m].weight)
-		--print(mytempresult)
-	end
-	-- add the bias for the output
-	mytempresult = mytempresult + (nnetwork.outputlayer[1].weight * fltBias)
-	
-	-- set the network signal
-	--print(mytempresult)
-	nnetwork.outputlayer[1].outsignal = mytempresult
-	
-	]]--
-	-- done forward pass
-	--print("Network signal strength is " .. nnetwork.outputlayer[1].outsignal)
-	
-	
 end
 
 function GetErrorRate(requiredtarget)
@@ -321,7 +272,7 @@ function love.update(dt)
 		correctoutcome = tonumber(io.stdin:read())
 		]]--
 		-- execute 1 forward pass
-		-- ExecuteForwardPass()
+		ExecuteForwardPass()
 		
 		--local errorrate = GetErrorRate(correctoutcome)
 		-- print("Error rate is " .. errorrate)
@@ -341,28 +292,37 @@ function love.draw()
 		love.graphics.setColor(222/255, 52/255, 235/255)
 		love.graphics.circle("fill", nnetwork.inputlayer[i].xpos, nnetwork.inputlayer[i].ypos, 25)
 	
-		love.graphics.setColor(1, 1, 1)
-		love.graphics.print(nnetwork.inputlayer[i].inputvalue,nnetwork.inputlayer[i].xpos - 20,nnetwork.inputlayer[i].ypos - 10)
-	
-		love.graphics.print(nnetwork.inputlayer[i].inputvalue,nnetwork.inputlayer[i].xpos - 20,nnetwork.inputlayer[i].ypos - 10)
+		if i <= intNumberofInputs then -- don't print a value for the bias as it is irrelevan
+			love.graphics.setColor(1, 1, 1)
+			love.graphics.print(nnetwork.inputlayer[i].inputvalue,nnetwork.inputlayer[i].xpos - 20,nnetwork.inputlayer[i].ypos - 10)
+		end
+
 	
 	end
-	
 	
 	-- draw hidden nodes + bias
 	for i = 1, intNumberofHiddenNodes + 1 do
 		love.graphics.setColor(52/255, 235/255, 229/255)
 		love.graphics.circle("fill", nnetwork.hiddenlayer[i].xpos, nnetwork.hiddenlayer[i].ypos, 25)
 	
-	
+		if i <= intNumberofHiddenNodes then	-- don't print a value for the bias as it is irrelevant
+			love.graphics.setColor(255,0, 0)
+			love.graphics.print(nnetwork.hiddenlayer[i].inputvalue,nnetwork.hiddenlayer[i].xpos - 20,nnetwork.hiddenlayer[i].ypos - 10)
+		end
+		
+		-- draw the out signal strength
+		if i <= intNumberofHiddenNodes then	-- don't print a value for the bias as it is irrelevant
+			love.graphics.setColor(255, 0, 0)
+			love.graphics.print(nnetwork.hiddenlayer[i].outsignal,nnetwork.hiddenlayer[i].xpos + 5,nnetwork.hiddenlayer[i].ypos + 0)
+		end
+		
 	end
 	
 	-- draw output nodes
 	for i = 1, intNumberofOutputNodes do
 		love.graphics.setColor(235/255, 164/255, 52/255)
 		love.graphics.circle("fill", nnetwork.outputlayer[i].xpos, nnetwork.outputlayer[i].ypos, 25)
-	
-	
+
 	end
 	
 	-- draw lines with weights for inputs to hidden nodes
@@ -374,12 +334,12 @@ function love.draw()
 			x2 = nnetwork.hiddenlayer[j].xpos
 			y2 = nnetwork.hiddenlayer[j].ypos
 			
-			love.graphics.setColor(1, 1, 1)
+			love.graphics.setColor(1, 1, 1,0.5)
 			love.graphics.line(x1,y1,x2,y2)
 			
 			-- draw the weight
-			x3 = (x1 + (x2-x1)/2) - 20
-			y3 = ((y1 + (y2-y1)/2) - 20) + (i * 10)
+			x3 = (x1 + (x2-x1)/2) - 30
+			y3 = ((y1 + (y2-y1)/2) - 30) + (i * 15)
 			love.graphics.setColor(1, 1, 1)			
 			love.graphics.print(nnetwork.inputlayer[i].weight[j],x3,y3)			
 		end
@@ -394,17 +354,17 @@ function love.draw()
 			x2 = nnetwork.outputlayer[j].xpos
 			y2 = nnetwork.outputlayer[j].ypos
 			
-			love.graphics.setColor(1, 1, 1)
+			love.graphics.setColor(1, 1, 1,0.5)
 			love.graphics.line(x1,y1,x2,y2)			
 		
 			-- draw the weight
-			x3 = (x1 + (x2-x1)/2) - 20
-			y3 = ((y1 + (y2-y1)/2) - 20) + (i * 10)
+			x3 = (x1 + (x2-x1)/2) - 30
+			y3 = ((y1 + (y2-y1)/2) - 30) + (i * 10)
 			
 			--print(x1,y1,x2,y2)
 			--print(i, j)
 			
-			love.graphics.setColor(1, 1, 1)			
+			love.graphics.setColor(1, 1,1,1)			
 			love.graphics.print(nnetwork.hiddenlayer[i].weight[j],x3,y3)			
 		
 		
