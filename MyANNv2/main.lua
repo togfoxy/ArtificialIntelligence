@@ -3,8 +3,10 @@
 intNumberofInputs = 2
 intNumberofHiddenNodes = 2
 intNumberofOutputNodes = 2
-fltLearningRate = 1
+fltLearningRate = 0.5
 fltBias = 1
+errorrate = 1			-- needs to be a non-zero number to avoid 'divide by zero'
+previouserrorrate = 1	-- needs to be a non-zero number to avoid 'divide by zero'
 
 nnetwork = {}
 nnetwork.inputlayer = {}	-- a list of input perceptrons
@@ -17,7 +19,8 @@ bolKeyPress = false
 inputperceptron = {inputvalue = 0,
 					xpos,			-- for graphics
 					ypos,			-- for graphics
-					weight = {} 	-- there will eventually be one weight per hidden p
+					weight = {},	-- there will eventually be one weight per hidden p
+					weightdelta = {}	-- need to store this during the back prop
 					}
 inputperceptron.__index = inputperceptron
 					
@@ -35,15 +38,16 @@ function inputperceptron:new(o)
 	for i = 1, (intNumberofHiddenNodes) do
 		o.weight[i] = 0
 	end
+	o.weightdelta = {}
 	return o
 end
-
 
 perceptron = {inputvalue = 0,	-- sum of (inputs * weight)	
 				outsignal = 0,	-- the next forward layer will apply this weight to the outsignal. Assumes one output
 				xpos,			-- for graphics
 				ypos,			-- for graphics
-				weight = {}		-- if this is a bias then the weight is used and not outsignal
+				weight = {},	-- if this is a bias then the weight is used and not outsignal
+				weightdelta = {}
 			}
 perceptron.__index = perceptron
 			
@@ -61,8 +65,12 @@ function perceptron:new(o)
 	for i = 1, (intNumberofOutputNodes) do
 		o.weight[i] = 0
 	end	
-
+	o.weightdelta = {}
 	return o
+end
+
+function round(num, numDecimalPlaces)
+  return tonumber(string.format("%." .. (numDecimalPlaces or 0) .. "f", num))
 end
 			
 function EstablishNetwork(numofinputs, numofhiddennodes)
@@ -77,13 +85,15 @@ function EstablishNetwork(numofinputs, numofhiddennodes)
 		
 		-- fix initial values and weights etc for learning purposes
 		if i == 1 then
-			p.inputvalue = 0.1
+			-- p.inputvalue = 0.1
+			p.inputvalue = 0.25
 			p.weight[1] = 0.25	-- W1
 			p.weight[2] = 0.35	-- W3
 		
 		end
 		if i == 2 then
-			p.inputvalue = 0.2
+			-- p.inputvalue = 0.2
+			p.inputvalue = 0.50
 			p.weight[1] = 0.15	-- W4
 			p.weight[2] = 0.28	-- W2
 		end	
@@ -219,39 +229,81 @@ function GetErrorRate(requiredtarget)
 	
 	for i = 1, #requiredtarget do
 		local thisoutputerror = 0
-		thisoutputerror = 0.5 * (requiredtarget[i] - nnetwork.outputlayer[i].outsignal)^2
+		thisoutputerror = fltLearningRate * (requiredtarget[i] - nnetwork.outputlayer[i].outsignal)^2
 		totalerror = totalerror + thisoutputerror
+		
+		--thisoutputerror = (requiredtarget[i] - nnetwork.outputlayer[i].outsignal)^2
+		--totalerror = totalerror + thisoutputerror
+		
 	end
 	return totalerror
 end
 
-function ExecuteBackaPropagation(mytarget, networksignal)
+function ExecuteBackaPropagation(mytarget)
+	-- mytarget is an array that has one target for each output node
+
 
 	--print("===================")
 	--print("Beginning back prop")
 	--print("===================")
-	--print("mytarget = " .. mytarget)
-	--print("network signal = " .. networksignal)
+
+	for i = 1, intNumberofOutputNodes do	-- for each output node
+		for j = 1,intNumberofHiddenNodes do
+			local alpha
+			local beta
+			local charlie
+			local weightdelta
+
+			alpha = -(mytarget[i] - nnetwork.outputlayer[i].outsignal)
+			beta = -(nnetwork.outputlayer[i].outsignal * (1- nnetwork.outputlayer[i].outsignal))
+			charlie = nnetwork.hiddenlayer[j].outsignal
+			weightdelta = alpha * beta * charlie
 	
-	for i = 1, (intNumberofHiddenNodes) do	-- the bias is down later on
+			nnetwork.hiddenlayer[j].weightdelta[i] = fltLearningRate * weightdelta
+			-- print("Delta for hidden node " .. j,i .." is " .. nnetwork.hiddenlayer[j].weightdelta[i])
+			
+		end
+	end
+	-- print("*******")
 	
-		--print("Hidden signal = " .. nnetwork.hiddenlayer[i].outsignal)
+	-- weights feeding the output layer are now adjusted.
+	
+	-- need to adjust the weights coming out of the input layer
+	for i = 1, intNumberofHiddenNodes do
+		for j = 1, intNumberofInputs do
 		
-		myvalue = -(mytarget - networksignal) * networksignal * (1 - networksignal) * nnetwork.hiddenlayer[i].outsignal
-		--print("Backpropping for P[" .. i .. "] with value " .. myvalue)
-		nnetwork.hiddenlayer[i].weight = nnetwork.hiddenlayer[i].weight - myvalue
-		--print("New weight for this P is now " .. nnetwork.hiddenlayer[i].weight)
+			-- randomly adjust weights in the correct direction
+			local rndomweightdelta = (love.math.random(0,50))/100
+			
+			-- reduce the rndomweightdelta towards zero as the error rate approaches zero
+			local errortrendfactor = errorrate / previouserrorrate
+			-- print (errorrate,previouserrorrate,errortrendfactor)
+			rndomweightdelta = rndomweightdelta * errortrendfactor
+			
+			if errorrate < 0 then
+				rndomweightdelta = rndomweightdelta * -1
+			end
+			nnetwork.inputlayer[j].weightdelta[i] = rndomweightdelta
+		end
 	end
 	
-	-- the bias in the hidden layer needs to be updated
-	--print("Hidden bias weight = " .. nnetwork.hiddenlayer[intNumberofHiddenNodes+1].weight)
-	
-	myvalue = -(mytarget - networksignal) * networksignal * (1 - networksignal) * nnetwork.hiddenlayer[intNumberofHiddenNodes+1].weight
-	--print("Backpropping for P[" .. intNumberofHiddenNodes+1 .. "] with value " .. myvalue)
-	nnetwork.hiddenlayer[intNumberofHiddenNodes+1].weight = nnetwork.hiddenlayer[intNumberofHiddenNodes+1].weight - myvalue
-	--print("New weight for this P is now " .. nnetwork.hiddenlayer[intNumberofHiddenNodes+1].weight)
-	
-	
+	-- now to apply all the deltas
+	for i = 1,intNumberofInputs do
+		for j = 1, intNumberofHiddenNodes do
+			if nnetwork.inputlayer[i].weightdelta[j] ~= nil then
+				nnetwork.inputlayer[i].weight[j] = nnetwork.inputlayer[i].weight[j] + nnetwork.inputlayer[i].weightdelta[j]
+				nnetwork.inputlayer[i].weightdelta[j] = 0	-- reset this weight for next time
+			end
+		end
+	end
+	for i = 1,intNumberofHiddenNodes do
+		for j = 1, intNumberofOutputNodes do
+			if nnetwork.hiddenlayer[i].weightdelta[j] ~= nil then
+				nnetwork.hiddenlayer[i].weight[j] = nnetwork.hiddenlayer[i].weight[j] + nnetwork.hiddenlayer[i].weightdelta[j]
+				nnetwork.hiddenlayer[i].weightdelta[j] = 0
+			end
+		end
+	end
 end
 
 function love.keypressed(key, scancode, isrepeat)
@@ -265,18 +317,18 @@ function love.load()
 	EstablishNetwork(2,2)
 end
 
-
 function love.update(dt)
 
 	if bolKeyPress then
 		-- bolKeyPress = false
+		bolKeyPress = true
 	
 		local correctoutcome = {}	-- for training
 		
 		-- nnetwork.inputlayer[1].inputvalue = 0.1
 		-- nnetwork.inputlayer[2].inputvalue = 0.2
-		correctoutcome[1] = 0.05
-		correctoutcome[2] = 0.95
+		correctoutcome[1] = 0
+		correctoutcome[2] = 1
 		--[[
 		-- load inputs into input layer
 		for i = 1,intNumberofInputs do
@@ -295,11 +347,12 @@ function love.update(dt)
 		-- execute 1 forward pass
 		ExecuteForwardPass()
 		
-		local errorrate = GetErrorRate(correctoutcome)		-- send in an array and get a single number back
+		previouserrorrate = errorrate
+		errorrate = GetErrorRate(correctoutcome)		-- send in an array and get a single number back
 		-- print("Error rate is " .. errorrate)
 
 		-- execute back prop	
-		--ExecuteBackaPropagation(correctoutcome, nnetwork.outputlayer[1].outsignal)
+		ExecuteBackaPropagation(correctoutcome)
 		
 		-- wait for signal to proceeed to next iteration
 
@@ -329,13 +382,13 @@ function love.draw()
 		-- draw the input value
 		if i <= intNumberofHiddenNodes then	-- don't print a value for the bias as it is irrelevant
 			love.graphics.setColor(255,0, 0)
-			love.graphics.print(nnetwork.hiddenlayer[i].inputvalue,nnetwork.hiddenlayer[i].xpos - 20,nnetwork.hiddenlayer[i].ypos - 10)
+			love.graphics.print(round(nnetwork.hiddenlayer[i].inputvalue,4),nnetwork.hiddenlayer[i].xpos - 20,nnetwork.hiddenlayer[i].ypos - 10)
 		end
 		
 		-- draw the out signal strength
 		if i <= intNumberofHiddenNodes then	-- don't print a value for the bias as it is irrelevant
 			love.graphics.setColor(255, 0, 0)
-			love.graphics.print(nnetwork.hiddenlayer[i].outsignal,nnetwork.hiddenlayer[i].xpos + -15,nnetwork.hiddenlayer[i].ypos + 0)
+			love.graphics.print(round(nnetwork.hiddenlayer[i].outsignal,4),nnetwork.hiddenlayer[i].xpos + -15,nnetwork.hiddenlayer[i].ypos + 0)
 		end
 		
 	end
@@ -348,13 +401,13 @@ function love.draw()
 		-- draw the input value
 		if i <= intNumberofOutputNodes then	-- don't print a value for the bias as it is irrelevant
 			love.graphics.setColor(255,0, 0)
-			love.graphics.print(nnetwork.outputlayer[i].inputvalue,nnetwork.outputlayer[i].xpos - 20,nnetwork.outputlayer[i].ypos - 10)
+			love.graphics.print(round(nnetwork.outputlayer[i].inputvalue,4),nnetwork.outputlayer[i].xpos - 20,nnetwork.outputlayer[i].ypos - 10)
 		end
 		
 		-- draw the out signal strength
 		if i <= intNumberofOutputNodes then	-- don't print a value for the bias as it is irrelevant
 			love.graphics.setColor(255, 0, 0)
-			love.graphics.print(nnetwork.outputlayer[i].outsignal,nnetwork.outputlayer[i].xpos + -15,nnetwork.outputlayer[i].ypos + 0)
+			love.graphics.print(round(nnetwork.outputlayer[i].outsignal,4),nnetwork.outputlayer[i].xpos + -15,nnetwork.outputlayer[i].ypos + 0)
 		end
 	end
 	
@@ -374,7 +427,7 @@ function love.draw()
 			x3 = (x1 + (x2-x1)/2) - 30
 			y3 = ((y1 + (y2-y1)/2) - 30) + (i * 15)
 			love.graphics.setColor(1, 1, 1)			
-			love.graphics.print(nnetwork.inputlayer[i].weight[j],x3,y3)			
+			love.graphics.print(round(nnetwork.inputlayer[i].weight[j],4),x3,y3)			
 		end
 	end
 	
@@ -398,7 +451,7 @@ function love.draw()
 			--print(i, j)
 			
 			love.graphics.setColor(1, 1,1,1)			
-			love.graphics.print(nnetwork.hiddenlayer[i].weight[j],x3,y3)			
+			love.graphics.print(round(nnetwork.hiddenlayer[i].weight[j],4),x3,y3)			
 		
 		
 		
@@ -409,7 +462,8 @@ function love.draw()
 	
 	end
 	
-	
+	-- draw the error rate
+	love.graphics.print(round(errorrate,6),10,10)
 	
 end
 
