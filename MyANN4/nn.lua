@@ -1,10 +1,6 @@
 local nn = {}
 
-local function LoadInput(myarr)
 
-
-
-end
 
 function nn.GetDecision(bot,myindex)
 -- 2 2 2 network
@@ -26,7 +22,7 @@ function nn.GetDecision(bot,myindex)
 	input2 = input2 / gintScreenWidth
 	
 	if myindex == 1 then
-		print("inputs: " .. input1, input2)
+		--print("inputs: " .. input1, input2)
 	end
 	
 	-- this is the sigmoid function that converts all signals to 0 -> 1

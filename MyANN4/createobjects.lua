@@ -11,6 +11,7 @@ function createobjects.CreateAgent()
 	bot.output1 = 0
 	bot.output2 = 0
 	bot.output3 = 0
+	bot.output4 = 0
 	bot.correctdecision = false
 	
 	-- random genome
